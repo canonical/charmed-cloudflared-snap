@@ -1,0 +1,60 @@
+name: charmed-cloudflared
+base: core24
+version: &cloudflared-version 2024.9.1
+summary: Cloudflared in a snap.
+description: >-
+  Cloudflared is the software powering Cloudflare Tunnel.
+  It runs on origin servers to connect applications or private networks to Cloudflare.
+
+platforms:
+  amd64:
+    build-on: [ amd64 ]
+    build-for: [ amd64 ]
+
+grade: stable
+confinement: strict
+license: Apache-2.0
+
+system-usernames:
+  _daemon_: shared
+
+apps:
+  cloudflared:
+    command: entrypoint.py
+    daemon: simple
+    install-mode: disable
+    plugs:
+      - network
+      - network-bind
+
+parts:
+  cfgo:
+    plugin: nil
+    source: https://github.com/cloudflare/go.git
+    source-type: git
+    source-commit: ec0a014545f180b0c74dfd687698657a9e86e310
+    build-snaps: [ go ]
+    override-build: |
+      cd ./src
+      ./make.bash
+  cloudflared:
+    plugin: nil
+    source: https://github.com/cloudflare/cloudflared.git
+    source-type: git
+    source-tag: *cloudflared-version
+    after: [ cfgo ]
+    build-environment:
+      - GO111MODULE: "on"
+      - CGO_ENABLED: "0"
+    override-build: |
+      # match source-commit in the cfgo part
+      grep -q ec0a014545f180b0c74dfd687698657a9e86e310 .teamcity/install-cloudflare-go.sh
+      
+      export PATH="$(realpath $CRAFT_PART_BUILD/../../cfgo/build/bin):$PATH"
+      which go | grep cfgo
+      make cloudflared
+      mkdir -p $CRAFT_PART_INSTALL/usr/bin
+      cp ./cloudflared $CRAFT_PART_INSTALL/usr/bin
+  scripts:
+    plugin: dump
+    source: ./snap/local
