@@ -13,7 +13,7 @@ jobs:
     steps:
       - run: |
           sudo nft -f - << EOF
-          define external-dns-ip = $(resolvectl dns $(ip -4 -j route get 8.8.8.8 | jq -r '.[] | .dev') | cut -f 2 -d ":" | xargs)
+          define external-dns-ip = $(resolvectl dns $(ip -4 -j route get 8.8.8.8 | jq -r '.[] | .dev') | cut -f 2 -d ":" | xargs | cut -f 1 -d " ")
           define redirect-dns-ips = { 8.8.8.8, 8.8.4.4 }
           table ip dns
           flush table ip dns
