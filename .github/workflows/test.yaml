@@ -40,3 +40,4 @@ jobs:
       - run: sudo microk8s kubectl run busybox --image=busybox:latest --command -- sleep 3600
       - run: sudo microk8s kubectl wait --for=condition=Ready pod/busybox --timeout=300s
       - run: kubectl exec busybox -- nslookup example.com
+      - run: kubectl exec busybox -- nslookup example.com 8.8.8.8
