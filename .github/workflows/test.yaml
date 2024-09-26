@@ -1,0 +1,39 @@
+# Copyright 2024 Canonical Ltd.
+# See LICENSE file for licensing details.
+
+name: Tests
+
+on:
+  pull_request:
+
+jobs:
+  build:
+    name: Build snap
+    runs-on: self-hosted
+    steps:
+      - run: |
+          sudo nft -f - << EOF
+          define external-dns-ip = $(resolvectl dns $(ip -4 -j route get 8.8.8.8 | jq -r '.[] | .dev') | cut -f 2 -d ":" | xargs)
+          define redirect-dns-ips = { 8.8.8.8, 8.8.4.4 }
+          table ip dns
+          flush table ip dns
+          table ip dns {
+                  chain prerouting {
+                          type nat hook prerouting priority dstnat; policy accept;
+                          ip daddr \$redirect-dns-ips udp dport 53 counter dnat to \$external-dns-ip:53
+                  }
+          
+                  chain output {
+                          type nat hook output priority -100; policy accept;
+                          ip daddr \$redirect-dns-ips udp dport 53 counter dnat to \$external-dns-ip:53
+                  }
+          }
+          EOF
+      - run: sudo nft list ruleset
+      - name: Setup operator environment
+        uses: charmed-kubernetes/actions-operator@main
+        with:
+          provider: microk8s
+          microk8s-addons: "dns ingress rbac storage"
+          channel: 1.25-strict/stable
+      - run: sudo nft list ruleset
