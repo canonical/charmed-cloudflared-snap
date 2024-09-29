@@ -22,7 +22,6 @@ apps:
   cloudflared:
     command: entrypoint.py
     daemon: simple
-    install-mode: disable
     plugs:
       - network
       - network-bind
