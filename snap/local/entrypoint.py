@@ -49,7 +49,9 @@ def get_tokens() -> list[str]:
     return [token.strip() for token in tokens.split(",") if token.strip()]
 
 
-def shutdown(procs: typing.Iterable[Cloudflared]):
+def shutdown(
+    procs: typing.Iterable[Cloudflared], grace_period=TERMINATION_GRACE_SECONDS
+):
     if not procs:
         return
     logger.info(
@@ -57,7 +59,7 @@ def shutdown(procs: typing.Iterable[Cloudflared]):
     )
     for proc in procs:
         proc.process.terminate()
-    termination_deadline = time.time() + TERMINATION_GRACE_SECONDS
+    termination_deadline = time.time() + grace_period
     for proc in procs:
         if time.time() < termination_deadline:
             try:
@@ -105,7 +107,7 @@ def restart(procs: list[Cloudflared], backoff=5) -> None:
 
 
 def main():
-    pid_file = pathlib.Path(os.environ["SNAP_COMMON"]) / "run" / "services.pid"
+    pid_file = pathlib.Path(os.environ["SNAP_COMMON"]) / "run" / "entrypoint.pid"
     pid_file.parent.mkdir(exist_ok=True)
     os.chown(pid_file.parent, 584792, 584792)
     os.setgroups([])

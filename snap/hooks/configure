@@ -10,6 +10,6 @@ import signal
 os.setgroups([])
 os.setregid(584792, 584792)
 os.setreuid(584792, 584792)
-pid_file = pathlib.Path(os.environ["SNAP_COMMON"]) / "run" / "services.pid"
+pid_file = pathlib.Path(os.environ["SNAP_COMMON"]) / "run" / "entrypoint.pid"
 if pid_file.exists():
     os.kill(int(pid_file.read_text()), signal.SIGHUP)
