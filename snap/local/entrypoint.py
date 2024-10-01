@@ -74,11 +74,11 @@ def shutdown(
 def reload(procs: list[Cloudflared], tokens: list[str]) -> list[Cloudflared]:
     logger.info("reloading cloudflared tunnel tokens")
     shutdown_procs = []
-    old_tokens = [p.token for p in procs]
-    if set(old_tokens) == set(tokens):
+    old_tokens = {p.token for p in procs}
+    if old_tokens == set(tokens):
         return procs
     new_tokens = [t for t in tokens if t not in old_tokens]
-    new_procs = []
+    final_procs = []
     for proc in procs:
         if proc.token not in tokens:
             shutdown_procs.append(proc)
@@ -88,14 +88,14 @@ def reload(procs: list[Cloudflared], tokens: list[str]) -> list[Cloudflared]:
             shutdown_procs.append(proc)
             new_tokens.append(proc.token)
             continue
-        new_procs.append(proc)
+        final_procs.append(proc)
     shutdown(shutdown_procs)
     for token in new_tokens:
         for metrics_port in range(METRICS_PORT_START, METRICS_PORT_START + len(tokens)):
-            if metrics_port not in [p.metrics_port for p in new_procs]:
+            if metrics_port not in {p.metrics_port for p in final_procs}:
                 break
-        new_procs.append(Cloudflared(token=token, metrics_port=metrics_port))
-    return new_procs
+        final_procs.append(Cloudflared(token=token, metrics_port=metrics_port))
+    return final_procs
 
 
 def restart(procs: list[Cloudflared], backoff=5) -> None:
