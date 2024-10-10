@@ -4,12 +4,6 @@
 # See LICENSE file for licensing details.
 
 import os
-import pathlib
-import signal
+import subprocess
 
-os.setgroups([])
-os.setregid(584792, 584792)
-os.setreuid(584792, 584792)
-pid_file = pathlib.Path(os.environ["SNAP_COMMON"]) / "run" / "entrypoint.pid"
-if pid_file.exists():
-    os.kill(int(pid_file.read_text()), signal.SIGHUP)
+subprocess.run(["snapctl", "restart", f"{os.environ['SNAP_NAME']}.cloudflared"])
