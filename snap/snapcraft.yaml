@@ -6,12 +6,10 @@ description: >-
   Cloudflared is the software powering Cloudflare Tunnel.
   It runs on origin servers to connect applications or private networks to Cloudflare.
 
-platforms:
-  amd64:
-    build-on: [ amd64 ]
+architectures:
+  - build-on: [ amd64 ]
     build-for: [ amd64 ]
-  arm64:
-    build-on: [ arm64 ]
+  - build-on: [ arm64 ]
     build-for: [ arm64 ]
 
 grade: stable
