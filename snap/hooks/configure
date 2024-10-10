@@ -3,7 +3,6 @@
 # Copyright 2024 Canonical Ltd.
 # See LICENSE file for licensing details.
 
-import os
 import subprocess
 
 
@@ -12,4 +11,4 @@ if not subprocess.check_output(["snapctl", "get", "metrics-port"]).strip():
 if not subprocess.check_output(["snapctl", "get", "tunnel-token"]).strip():
     subprocess.check_call(["snapctl", "set", "tunnel-token="])
 
-subprocess.run(["snapctl", "restart", f"{os.environ['SNAP_NAME']}.cloudflared"])
+subprocess.run(["snapctl", "restart", "cloudflared"])
