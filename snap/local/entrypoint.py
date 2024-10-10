@@ -7,7 +7,7 @@ import os
 import subprocess
 
 
-def get_tokens() -> str | None:
+def get_token() -> str | None:
     token = subprocess.check_output(
         ["snapctl", "get", "tunnel-token"], encoding="ascii"
     )
@@ -23,7 +23,7 @@ def main():
     os.setgroups([])
     os.setregid(584792, 584792)
     os.setreuid(584792, 584792)
-    token = get_tokens()
+    token = get_token()
     metrics_port = get_metrics_port()
     if metrics_port and token:
         subprocess.check_call(
