@@ -6,4 +6,10 @@
 import os
 import subprocess
 
+
+if not subprocess.check_output(["snapctl", "get", "metrics-port"]).strip():
+    subprocess.check_call(["snapctl", "set", "metrics-port="])
+if not subprocess.check_output(["snapctl", "get", "token"]).strip():
+    subprocess.check_call(["snapctl", "set", "token="])
+
 subprocess.run(["snapctl", "restart", f"{os.environ['SNAP_NAME']}.cloudflared"])
