@@ -1,0 +1,14 @@
+#!/usr/bin/env python3
+
+# Copyright 2024 Canonical Ltd.
+# See LICENSE file for licensing details.
+
+import subprocess
+
+
+if not subprocess.check_output(["snapctl", "get", "metrics-port"]).strip():
+    subprocess.check_call(["snapctl", "set", "metrics-port="])
+if not subprocess.check_output(["snapctl", "get", "tunnel-token"]).strip():
+    subprocess.check_call(["snapctl", "set", "tunnel-token="])
+
+subprocess.run(["snapctl", "restart", "cloudflared"])
