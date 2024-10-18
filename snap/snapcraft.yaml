@@ -21,6 +21,10 @@ license: Apache-2.0
 system-usernames:
   _daemon_: shared
 
+layout:
+  /etc:
+    bind: $SNAP_DATA/etc
+
 apps:
   cloudflared:
     command: entrypoint.py
