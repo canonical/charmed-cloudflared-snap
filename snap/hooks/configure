@@ -11,4 +11,5 @@ if not subprocess.check_output(["snapctl", "get", "metrics-port"]).strip():
 if not subprocess.check_output(["snapctl", "get", "tunnel-token"]).strip():
     subprocess.check_call(["snapctl", "set", "tunnel-token="])
 
-subprocess.run(["snapctl", "restart", "cloudflared"])
+subprocess.run(["snapctl", "stop", "cloudflared"])
+subprocess.run(["snapctl", "start", "cloudflared"])
