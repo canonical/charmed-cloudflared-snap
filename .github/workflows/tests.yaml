@@ -48,4 +48,6 @@ jobs:
         env:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-        run: pytest tests -v --tb native -rP --log-cli-level=DEBUG --snap-file=./charmed-cloudflared_*.snap
+        run: |
+          export SNAP_FILE=$(ls charmed-cloudflared_*.snap)
+          pytest tests -v --tb native -rP --log-cli-level=DEBUG --snap-file=./$SNAP_FILE
