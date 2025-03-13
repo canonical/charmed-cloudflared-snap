@@ -50,4 +50,5 @@ jobs:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
         run: |
           export SNAP_FILE=$(ls charmed-cloudflared_*.snap)
+          sudo snap set system experimental.parallel-instances=true
           pytest tests -v --tb native -rP --log-cli-level=DEBUG --snap-file=./$SNAP_FILE
