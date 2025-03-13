@@ -12,5 +12,44 @@ on:
 
 jobs:
   build:
-    name: Build snap
-    uses: canonical/data-platform-workflows/.github/workflows/build_snap.yaml@v24
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up environment
+        run: |
+          sudo adduser "$USER" lxd
+          # `newgrp` does not work in GitHub Actions; use `sudo --user` instead
+          sudo --user "$USER" --preserve-env --preserve-env=PATH -- env -- lxd waitready
+          sudo --user "$USER" --preserve-env --preserve-env=PATH -- env -- lxd init --auto
+          # Workaround for Docker & LXD on same machine
+          sudo iptables -F FORWARD
+          sudo iptables -P FORWARD ACCEPT
+
+          sudo snap install snapcraft --classic ${{ steps.snapcraft-snap-version.outputs.install_flag }}
+      - name: Pack snap
+        run: sudo --user "$USER" --preserve-env --preserve-env=PATH -- env -- snapcraft pack -v
+      - name: Snapcraft logs
+        if: ${{ success() || (failure() && steps.pack.outcome == 'failure') }}
+        run: cat ~/.local/state/snapcraft/log/*
+      - run: touch .empty
+      - name: Compute path in artifact
+        id: path-in-artifact
+        run: compute-path-in-artifact '${{ inputs.path-to-snap-project-directory }}'
+      - name: Upload snap package
+        uses: actions/upload-artifact@v4
+        with:
+          name: charmed-cloudflared.snap
+          path: "*.snap"
+          if-no-files-found: error
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - name: Install dependencies
+        run: pip install pytest requests
+      - name: Run tests
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: pytest tests -v --tb native -rP --log-cli-level=DEBUG --snap-file=./charmed-cloudflared_*.snap
