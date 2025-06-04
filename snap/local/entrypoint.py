@@ -7,16 +7,36 @@ import os
 import subprocess
 
 
+def get_config(config: str) -> str:
+    return subprocess.check_output(
+        ["snapctl", "get", config], encoding="ascii"
+    ).strip()
+
+
 def get_token() -> str | None:
-    token = subprocess.check_output(
-        ["snapctl", "get", "tunnel-token"], encoding="ascii"
-    )
-    return token.strip()
+    return get_config("tunnel-token")
 
 
 def get_metrics_port() -> int | None:
-    port = subprocess.check_output(["snapctl", "get", "metrics-port"], encoding="ascii")
-    return int(port.strip()) if port.strip() else None
+    port = get_config("metrics-port")
+    return int(port) if port else None
+
+
+def get_proxy_env() -> dict:
+    http_proxy = get_config("http-proxy")
+    https_proxy = get_config("https-proxy")
+    no_proxy = get_config("no-proxy")
+    env = {}
+    if http_proxy:
+        env["HTTP_PROXY"] = http_proxy
+        env["http_proxy"] = http_proxy
+    if https_proxy:
+        env["HTTPS_PROXY"] = https_proxy
+        env["https_proxy"] = https_proxy
+    if no_proxy:
+        env["NO_PROXY"] = no_proxy
+        env["no_proxy"] = no_proxy
+    return env
 
 
 def main():
@@ -38,6 +58,7 @@ def main():
                 "run",
             ],
             env={
+                **get_proxy_env(),
                 "TUNNEL_TOKEN": token,
             },
         )
