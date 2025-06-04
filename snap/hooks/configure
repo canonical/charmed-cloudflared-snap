@@ -5,10 +5,8 @@
 
 import subprocess
 
-
-if not subprocess.check_output(["snapctl", "get", "metrics-port"]).strip():
-    subprocess.check_call(["snapctl", "set", "metrics-port="])
-if not subprocess.check_output(["snapctl", "get", "tunnel-token"]).strip():
-    subprocess.check_call(["snapctl", "set", "tunnel-token="])
+for config in ["metrics-port", "tunnel-token", "http-proxy", "https-proxy", "no-proxy"]:
+    if not subprocess.check_output(["snapctl", "get", config]).strip():
+        subprocess.check_call(["snapctl", "set", f"{config}="])
 
 subprocess.run(["snapctl", "restart", "cloudflared"])
