@@ -28,7 +28,7 @@ def pytest_addoption(parser):
     parser.addoption("--installed-snap", action="store", default="")
     parser.addoption("--https-proxy", action="store", default="")
 
-@pytest.fixture(scope="session")
+@pytest.fixture(name="run", scope="session")
 def fixture_run(pytestconfig) -> Callable[[list[str], str | None], str]:
     xargs = pytestconfig.getoption("xargs")
     if not xargs:
