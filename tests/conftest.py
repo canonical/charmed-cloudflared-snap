@@ -13,6 +13,7 @@ from typing import Generator
 
 import pytest
 import requests
+from black.trans import Callable
 
 logger = logging.getLogger(__name__)
 
@@ -24,26 +25,42 @@ def pytest_addoption(parser):
         parser: Pytest parser.
     """
     parser.addoption("--snap-file", action="store", required=True)
+    parser.addoption("--xargs", action="store", default="")
+    parser.addoption("--installed-snap", action="store", default="")
+    parser.addoption("--https-proxy", action="store", default="")
 
+@pytest.fixture(scope="session")
+def fixture_run(pytestconfig) -> Callable[[list[str], str | None], str]:
+    xargs = pytestconfig.getoption("xargs")
+    if not xargs:
+        xargs = []
+    else:
+        xargs = xargs.split()
 
-def exec(cmd: list[str], redact: str = None):
-    command_line = " ".join(cmd)
-    if redact:
-        command_line = command_line.replace(redact, "***")
-    logger.info(f"executing command: {command_line}")
-    return subprocess.check_call(cmd)
+    def run(cmd: list[str], redact: str | None = None) -> str:
+        command_line = " ".join(xargs + cmd)
+        if redact:
+            command_line = command_line.replace(redact, "***")
+        logger.info(f"executing command: {command_line}")
+        return subprocess.check_output(xargs + cmd, encoding="utf-8")
+
+    return run
 
 
 @pytest.fixture(scope="module", name="charmed_cloudflared_snap")
-def install_charmed_cloudflared_snap(pytestconfig) -> Generator[str, None, None]:
+def install_charmed_cloudflared_snap(pytestconfig, run) -> Generator[str, None, None]:
+    installed = pytestconfig.getoption("--install-snap")
+    if installed:
+        yield installed
+        return
     snap_file = pytestconfig.getoption("--snap-file")
     nonce = "".join(random.choice(string.ascii_lowercase) for _ in range(4))
     name = f"charmed-cloudflared_test{nonce}"
-    exec(["sudo", "snap", "install", "--dangerous", "--name", name, snap_file])
+    run(["sudo", "snap", "install", "--dangerous", "--name", name, snap_file])
 
     yield name
 
-    exec(["sudo", "snap", "remove", name, "--purge"])
+    run(["sudo", "snap", "remove", name, "--purge"])
 
 
 class CloudflareAPI:

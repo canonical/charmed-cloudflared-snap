@@ -6,8 +6,6 @@
 import logging
 import time
 
-from conftest import exec
-
 logger = logging.getLogger(__name__)
 
 
@@ -32,20 +30,23 @@ def wait_for_tunnel_healthy(cloudflare_api, tunnel_token):
     raise TimeoutError("timeout waiting for tunnel healthy")
 
 
-def test_tunnel_token_config(cloudflare_api, charmed_cloudflared_snap):
+def test_tunnel_token_config(
+    cloudflare_api, charmed_cloudflared_snap, run, pytestconfig
+):
     tunnel_token = cloudflare_api.create_tunnel_token()
-    exec(
-        [
-            "sudo",
-            "snap",
-            "set",
-            charmed_cloudflared_snap,
-            f"tunnel-token={tunnel_token}",
-            "metrics-port=39000",
-        ],
-        redact=tunnel_token,
-    )
-    exec(
+    cmd = [
+        "sudo",
+        "snap",
+        "set",
+        charmed_cloudflared_snap,
+        f"tunnel-token={tunnel_token}",
+        "metrics-port=39000",
+    ]
+    https_proxy = pytestconfig.getoption("https-proxy")
+    if https_proxy:
+        cmd.append(f"https-proxy={https_proxy}")
+    run(cmd, redact=tunnel_token)
+    run(
         [
             "sudo",
             "cp",
@@ -53,7 +54,7 @@ def test_tunnel_token_config(cloudflare_api, charmed_cloudflared_snap):
             f"/var/snap/{charmed_cloudflared_snap}/current/etc/",
         ]
     )
-    exec(
+    run(
         [
             "sudo",
             "mkdir",
@@ -61,7 +62,7 @@ def test_tunnel_token_config(cloudflare_api, charmed_cloudflared_snap):
             f"/var/snap/{charmed_cloudflared_snap}/current/etc/ssl/certs",
         ]
     )
-    exec(
+    run(
         [
             "sudo",
             "cp",
@@ -69,7 +70,7 @@ def test_tunnel_token_config(cloudflare_api, charmed_cloudflared_snap):
             f"/var/snap/{charmed_cloudflared_snap}/current/etc/ssl/certs/ca-certificates.crt",
         ]
     )
-    exec(
+    run(
         ["sudo", "snap", "start", "--enable", f"{charmed_cloudflared_snap}.cloudflared"]
     )
     wait_for_tunnel_healthy(cloudflare_api, tunnel_token)
