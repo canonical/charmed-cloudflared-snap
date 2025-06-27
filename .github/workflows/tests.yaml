@@ -70,7 +70,7 @@ jobs:
           sudo lxc exec proxy -- systemctl restart tinyproxy.service
           
           sudo lxc file push *.snap airgapped/root/
-          sudo lxc exec airgapped -- snap install *.snap --dangerous
+          sudo lxc exec airgapped -- snap install /root/$(ls *.snap) --dangerous
           
           sudo lxc network acl rule add airgapped egress \
             action=reject protocol=udp \
