@@ -97,7 +97,7 @@ jobs:
           sudo snap set system experimental.parallel-instances=true
           pytest tests -v --tb native -rP --log-cli-level=DEBUG \
             --installed-snap=charmed-cloudflared \
-            --https-proxy=http://$(lxc list proxy -c4 --format csv | cut -f 1 -d " "):8888 \
+            --https-proxy=http://$(sudo lxc list proxy -c4 --format csv | cut -f 1 -d " "):8888 \
             --xargs="sudo lxc exec airgapped --"
 
       - name: Run tests
