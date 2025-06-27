@@ -1,8 +1,8 @@
 diff --git a/edgediscovery/dial.go b/edgediscovery/dial.go
-index 1bbf59c3..21876d63 100644
+index 1bbf59c3..6f1f317f 100644
 --- a/edgediscovery/dial.go
 +++ b/edgediscovery/dial.go
-@@ -1,14 +1,80 @@
+@@ -1,14 +1,83 @@
  package edgediscovery
  
  import (
@@ -27,7 +27,6 @@ index 1bbf59c3..21876d63 100644
 +	if network != "tcp" {
 +		return nil, errors.Errorf("unsupported network for proxy '%s', support tcp", network)
 +	}
-+	dialer := net.Dialer{}
 +	httpsProxyUrl, err := url.Parse(string(d))
 +	if err != nil {
 +		return nil, errors.Errorf("invalid proxy URL: %s", string(d))
@@ -39,7 +38,11 @@ index 1bbf59c3..21876d63 100644
 +	if httpsProxyUrl.Port() == "" {
 +		proxyHost = net.JoinHostPort(proxyHost, "80")
 +	}
++	dialer := net.Dialer{}
 +	conn, err := dialer.DialContext(cxt, network, proxyHost)
++	if err != nil {
++		return nil, fmt.Errorf("failed to dial proxy: %w", err)
++	}
 +	host, portStr, err := net.SplitHostPort(address)
 +	if err != nil {
 +		return nil, errors.Errorf("invalid address to proxy: %s", address)
@@ -83,7 +86,7 @@ index 1bbf59c3..21876d63 100644
  // DialEdge makes a TLS connection to a Cloudflare edge node
  func DialEdge(
  	ctx context.Context,
-@@ -25,7 +91,31 @@ func DialEdge(
+@@ -25,7 +94,31 @@ func DialEdge(
  	if localIP != nil {
  		dialer.LocalAddr = &net.TCPAddr{IP: localIP, Port: 0}
  	}
