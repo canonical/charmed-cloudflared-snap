@@ -9,11 +9,10 @@ import os
 import random
 import string
 import subprocess
-from typing import Generator
+from typing import Generator, Callable
 
 import pytest
 import requests
-from black.trans import Callable
 
 logger = logging.getLogger(__name__)
 
