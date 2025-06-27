@@ -42,6 +42,7 @@ jobs:
             ipv6.address=none
           sudo lxc network acl create airgapped
           sudo lxc network set airgapped security.acls=airgapped
+          sudo lxc network set airgapped security.acls.default.egress.action=allow
           sudo lxc launch ubuntu:24.04 airgapped --network=airgapped --vm
           sudo lxc launch ubuntu:24.04 proxy --vm
 
