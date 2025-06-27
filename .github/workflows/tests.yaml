@@ -54,11 +54,11 @@ jobs:
 
       - name: Upload snap package
         uses: actions/upload-artifact@v4
-        if: matrix.use-proxy != true
         with:
           name: charmed-cloudflared.snap
           path: "*.snap"
           if-no-files-found: error
+          overwrite: 'true'
 
       - name: Setup LXD container
         if: matrix.use-proxy
