@@ -48,7 +48,7 @@ def fixture_run(pytestconfig) -> Callable[[list[str], str | None], str]:
 
 @pytest.fixture(scope="module", name="charmed_cloudflared_snap")
 def install_charmed_cloudflared_snap(pytestconfig, run) -> Generator[str, None, None]:
-    installed = pytestconfig.getoption("--install-snap")
+    installed = pytestconfig.getoption("--installed-snap")
     if installed:
         yield installed
         return
