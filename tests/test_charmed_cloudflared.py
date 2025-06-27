@@ -42,7 +42,7 @@ def test_tunnel_token_config(
         f"tunnel-token={tunnel_token}",
         "metrics-port=39000",
     ]
-    https_proxy = pytestconfig.getoption("https-proxy")
+    https_proxy = pytestconfig.getoption("--https-proxy")
     if https_proxy:
         cmd.append(f"https-proxy={https_proxy}")
     run(cmd, redact=tunnel_token)
