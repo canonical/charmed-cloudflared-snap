@@ -12,6 +12,7 @@ on:
 
 jobs:
   test:
+    name: Test (proxy: ${{ matrix.use-proxy }})
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -53,6 +54,7 @@ jobs:
 
       - name: Upload snap package
         uses: actions/upload-artifact@v4
+        if: matrix.use-proxy != true
         with:
           name: charmed-cloudflared.snap
           path: "*.snap"
