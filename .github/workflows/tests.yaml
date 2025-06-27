@@ -63,8 +63,8 @@ jobs:
       - name: Setup LXD container
         if: matrix.use-proxy
         run: |
-          sudo lxc exec proxy apt update
-          sudo lxc exec proxy apt install -y tinyproxy
+          sudo lxc exec proxy apt-get update
+          sudo lxc exec proxy apt-get install -y tinyproxy
           sudo lxc exec proxy sed -i 's/^Allow/#Allow/g' /etc/tinyproxy/tinyproxy.conf
           sudo lxc exec proxy systemctl restart tinyproxy.service
           
