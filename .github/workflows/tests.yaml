@@ -11,7 +11,7 @@ on:
   pull_request:
 
 jobs:
-  build:
+  test:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -52,3 +52,79 @@ jobs:
           export SNAP_FILE=$(ls charmed-cloudflared_*.snap)
           sudo snap set system experimental.parallel-instances=true
           pytest tests -v --tb native -rP --log-cli-level=DEBUG --snap-file=./$SNAP_FILE
+
+  test-proxy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up environment
+        run: |
+          sudo adduser "$USER" lxd
+          # `newgrp` does not work in GitHub Actions; use `sudo --user` instead
+          sudo --user "$USER" --preserve-env --preserve-env=PATH -- env -- lxd waitready
+          sudo --user "$USER" --preserve-env --preserve-env=PATH -- env -- lxd init --auto
+          # Workaround for Docker & LXD on same machine
+          sudo iptables -F FORWARD
+          sudo iptables -P FORWARD ACCEPT
+
+          sudo snap install snapcraft --classic ${{ steps.snapcraft-snap-version.outputs.install_flag }}
+      - name: Prepare LXD containers
+        run: |
+          lxc network create airgapped \
+            ipv4.address=10.10.10.1/24 \
+            ipv4.nat=true \
+            ipv6.address=none
+          lxc network acl create airgapped
+          lxc network set airgapped security.acls=airgapped
+          lxc launch ubuntu:24.04 airgapped --network=airgapped --vm
+          lxc launch ubuntu:24.04 proxy --vm
+
+      - name: Pack snap
+        run: sudo --user "$USER" --preserve-env --preserve-env=PATH -- env -- snapcraft pack -v
+
+      - name: Snapcraft logs
+        if: ${{ success() || (failure() && steps.pack.outcome == 'failure') }}
+        run: cat ~/.local/state/snapcraft/log/*
+
+      - name: Upload snap package
+        uses: actions/upload-artifact@v4
+        with:
+          name: charmed-cloudflared.snap
+          path: "*.snap"
+          if-no-files-found: error
+
+      - name: Setup LXD container
+        run: |
+          lxc exec proxy apt update
+          lxc exec proxy apt install -y tinyproxy
+          lxc exec proxy sed -i 's/^Allow/#Allow/g' /etc/tinyproxy/tinyproxy.conf
+          lxc exec proxy systemctl restart tinyproxy.service
+          
+          lxc file push *.snap airgapped/root/
+          lxc exec airgapped snap install *.snap --dangerous
+          
+          lxc network acl rule add airgapped egress \
+            action=reject protocol=udp \
+            destination_port="0-52,54-65535" state=enabled
+          lxc network acl rule add airgapped egress \
+            action=reject protocol=tcp \
+            destination_port="0-8887,8889-65535" state=enabled
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - name: Install dependencies
+        run: pip install pytest requests
+      - name: Run tests
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: |
+          export SNAP_FILE=$(ls charmed-cloudflared_*.snap)
+          sudo snap set system experimental.parallel-instances=true
+          pytest tests -v --tb native -rP --log-cli-level=DEBUG \
+            --installed-snap charmed-cloudflared \
+            --https-proxy $(lxc list proxy -c4 --format csv | cut -f 1 -d " ") \
+            --xargs "lxc exec airgapped"
