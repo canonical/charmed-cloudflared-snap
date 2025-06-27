@@ -35,14 +35,14 @@ jobs:
       - name: Prepare LXD containers
         if: matrix.use-proxy
         run: |
-          lxc network create airgapped \
+          sudo lxc network create airgapped \
             ipv4.address=10.10.10.1/24 \
             ipv4.nat=true \
             ipv6.address=none
-          lxc network acl create airgapped
-          lxc network set airgapped security.acls=airgapped
-          lxc launch ubuntu:24.04 airgapped --network=airgapped --vm
-          lxc launch ubuntu:24.04 proxy --vm
+          sudo lxc network acl create airgapped
+          sudo lxc network set airgapped security.acls=airgapped
+          sudo lxc launch ubuntu:24.04 airgapped --network=airgapped --vm
+          sudo lxc launch ubuntu:24.04 proxy --vm
 
       - name: Pack snap
         run: sudo --user "$USER" --preserve-env --preserve-env=PATH -- env -- snapcraft pack -v
