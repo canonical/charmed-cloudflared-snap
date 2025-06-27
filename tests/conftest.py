@@ -23,13 +23,13 @@ def pytest_addoption(parser):
     Args:
         parser: Pytest parser.
     """
-    parser.addoption("--snap-file", action="store", required=True)
+    parser.addoption("--snap-file", action="store", default="")
     parser.addoption("--xargs", action="store", default="")
     parser.addoption("--installed-snap", action="store", default="")
     parser.addoption("--https-proxy", action="store", default="")
 
 @pytest.fixture(name="run", scope="session")
-def fixture_run(pytestconfig) -> Callable[[list[str], str | None], str]:
+def fixture_run(pytestconfig) -> Callable:
     xargs = pytestconfig.getoption("xargs")
     if not xargs:
         xargs = []
@@ -53,6 +53,7 @@ def install_charmed_cloudflared_snap(pytestconfig, run) -> Generator[str, None, 
         yield installed
         return
     snap_file = pytestconfig.getoption("--snap-file")
+    assert snap_file
     nonce = "".join(random.choice(string.ascii_lowercase) for _ in range(4))
     name = f"charmed-cloudflared_test{nonce}"
     run(["sudo", "snap", "install", "--dangerous", "--name", name, snap_file])
