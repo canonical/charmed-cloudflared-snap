@@ -125,6 +125,6 @@ jobs:
           export SNAP_FILE=$(ls charmed-cloudflared_*.snap)
           sudo snap set system experimental.parallel-instances=true
           pytest tests -v --tb native -rP --log-cli-level=DEBUG \
-            --installed-snap charmed-cloudflared \
-            --https-proxy $(lxc list proxy -c4 --format csv | cut -f 1 -d " ") \
-            --xargs "lxc exec airgapped"
+            --installed-snap=charmed-cloudflared \
+            --https-proxy=http://$(lxc list proxy -c4 --format csv | cut -f 1 -d " "):8888 \
+            --xargs="lxc exec airgapped"
