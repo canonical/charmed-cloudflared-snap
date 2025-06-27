@@ -63,13 +63,13 @@ jobs:
       - name: Setup LXD container
         if: matrix.use-proxy
         run: |
-          sudo lxc exec proxy apt-get update
-          sudo lxc exec proxy apt-get install -y tinyproxy
-          sudo lxc exec proxy sed -i 's/^Allow/#Allow/g' /etc/tinyproxy/tinyproxy.conf
-          sudo lxc exec proxy systemctl restart tinyproxy.service
+          sudo lxc exec proxy -- apt-get update
+          sudo lxc exec proxy -- apt-get install -y tinyproxy
+          sudo lxc exec proxy -- sed -i 's/^Allow/#Allow/g' /etc/tinyproxy/tinyproxy.conf
+          sudo lxc exec proxy -- systemctl restart tinyproxy.service
           
           sudo lxc file push *.snap airgapped/root/
-          sudo lxc exec airgapped snap install *.snap --dangerous
+          sudo lxc exec airgapped -- snap install *.snap --dangerous
           
           sudo lxc network acl rule add airgapped egress \
             action=reject protocol=udp \
@@ -97,7 +97,7 @@ jobs:
           pytest tests -v --tb native -rP --log-cli-level=DEBUG \
             --installed-snap=charmed-cloudflared \
             --https-proxy=http://$(lxc list proxy -c4 --format csv | cut -f 1 -d " "):8888 \
-            --xargs="sudo lxc exec airgapped"
+            --xargs="sudo lxc exec airgapped --"
 
       - name: Run tests
         if: matrix.use-proxy != true
