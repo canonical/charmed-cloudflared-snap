@@ -12,7 +12,7 @@ on:
 
 jobs:
   test:
-    name: Test (proxy: ${{ matrix.use-proxy }})
+    name: "Test (proxy: ${{ matrix.use-proxy }})"
     runs-on: ubuntu-latest
     strategy:
       matrix:
