@@ -28,6 +28,7 @@ def pytest_addoption(parser):
     parser.addoption("--installed-snap", action="store", default="")
     parser.addoption("--https-proxy", action="store", default="")
 
+
 @pytest.fixture(name="run", scope="session")
 def fixture_run(pytestconfig) -> Callable:
     xargs = pytestconfig.getoption("xargs")
@@ -53,7 +54,7 @@ def install_charmed_cloudflared_snap(pytestconfig, run) -> Generator[str, None, 
         yield installed
         return
     snap_file = pytestconfig.getoption("--snap-file")
-    assert snap_file
+    assert snap_file, "missing --snap-file option"
     nonce = "".join(random.choice(string.ascii_lowercase) for _ in range(4))
     name = f"charmed-cloudflared_test{nonce}"
     run(["sudo", "snap", "install", "--dangerous", "--name", name, snap_file])
@@ -165,9 +166,17 @@ class CloudflareAPI:
 def cloudflare_api():
     """Cloudflare API fixture."""
     account_id = os.environ["CLOUDFLARE_ACCOUNT_ID"]
-    assert account_id
+    assert account_id, (
+        "missing cloudflare account ID, "
+        "please provide a cloudflare account ID "
+        "via the CLOUDFLARE_ACCOUNT_ID environment variable."
+    )
     api_token = os.environ["CLOUDFLARE_API_TOKEN"]
-    assert api_token
+    assert api_token, (
+        "missing cloudflare api token, "
+        "please provide a cloudflare api token "
+        "via the CLOUDFLARE_API_TOKEN environment variable."
+    )
     api = CloudflareAPI(account_id=account_id, api_token=api_token)
 
     yield api
