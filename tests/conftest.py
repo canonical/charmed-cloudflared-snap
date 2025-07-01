@@ -9,7 +9,7 @@ import os
 import random
 import string
 import subprocess
-from typing import Generator
+from typing import Generator, Callable
 
 import pytest
 import requests
@@ -23,27 +23,45 @@ def pytest_addoption(parser):
     Args:
         parser: Pytest parser.
     """
-    parser.addoption("--snap-file", action="store", required=True)
+    parser.addoption("--snap-file", action="store", default="")
+    parser.addoption("--xargs", action="store", default="")
+    parser.addoption("--installed-snap", action="store", default="")
+    parser.addoption("--https-proxy", action="store", default="")
 
 
-def exec(cmd: list[str], redact: str = None):
-    command_line = " ".join(cmd)
-    if redact:
-        command_line = command_line.replace(redact, "***")
-    logger.info(f"executing command: {command_line}")
-    return subprocess.check_call(cmd)
+@pytest.fixture(name="run", scope="session")
+def fixture_run(pytestconfig) -> Callable:
+    xargs = pytestconfig.getoption("xargs")
+    if not xargs:
+        xargs = []
+    else:
+        xargs = xargs.split()
+
+    def run(cmd: list[str], redact: str | None = None) -> str:
+        command_line = " ".join(xargs + cmd)
+        if redact:
+            command_line = command_line.replace(redact, "***")
+        logger.info(f"executing command: {command_line}")
+        return subprocess.check_output(xargs + cmd, encoding="utf-8")
+
+    return run
 
 
 @pytest.fixture(scope="module", name="charmed_cloudflared_snap")
-def install_charmed_cloudflared_snap(pytestconfig) -> Generator[str, None, None]:
+def install_charmed_cloudflared_snap(pytestconfig, run) -> Generator[str, None, None]:
+    installed = pytestconfig.getoption("--installed-snap")
+    if installed:
+        yield installed
+        return
     snap_file = pytestconfig.getoption("--snap-file")
+    assert snap_file, "missing --snap-file option"
     nonce = "".join(random.choice(string.ascii_lowercase) for _ in range(4))
     name = f"charmed-cloudflared_test{nonce}"
-    exec(["sudo", "snap", "install", "--dangerous", "--name", name, snap_file])
+    run(["sudo", "snap", "install", "--dangerous", "--name", name, snap_file])
 
     yield name
 
-    exec(["sudo", "snap", "remove", name, "--purge"])
+    run(["sudo", "snap", "remove", name, "--purge"])
 
 
 class CloudflareAPI:
@@ -148,9 +166,17 @@ class CloudflareAPI:
 def cloudflare_api():
     """Cloudflare API fixture."""
     account_id = os.environ["CLOUDFLARE_ACCOUNT_ID"]
-    assert account_id
+    assert account_id, (
+        "missing cloudflare account ID, "
+        "please provide a cloudflare account ID "
+        "via the CLOUDFLARE_ACCOUNT_ID environment variable."
+    )
     api_token = os.environ["CLOUDFLARE_API_TOKEN"]
-    assert api_token
+    assert api_token, (
+        "missing cloudflare api token, "
+        "please provide a cloudflare api token "
+        "via the CLOUDFLARE_API_TOKEN environment variable."
+    )
     api = CloudflareAPI(account_id=account_id, api_token=api_token)
 
     yield api
