@@ -38,31 +38,18 @@ parts:
   patches:
     plugin: nil
     source: ./snap/patches
-  cfgo:
-    plugin: nil
-    source: https://github.com/cloudflare/cloudflared.git
-    source-type: git
-    source-tag: *cloudflared-version
-    build-snaps: [ go ]
-    override-build: |
-      CFGO_REF=$(grep -Po '(?<=git checkout -q )[0-9a-f]+' .teamcity/install-cloudflare-go.sh)
-      git clone https://github.com/cloudflare/go
-      cd go/src
-      git checkout $CFGO_REF
-      ./make.bash
   cloudflared:
     plugin: nil
     source: https://github.com/cloudflare/cloudflared.git
     source-type: git
     source-tag: *cloudflared-version
-    after: [ patches, cfgo ]
+    after: [ patches ]
+    build-snaps: [ go ]
     build-environment:
       - GO111MODULE: "on"
       - CGO_ENABLED: "0"
     override-build: |
       git apply $(realpath $CRAFT_PART_BUILD/../../patches/build/)/*.patch      
-      export PATH="$(realpath $CRAFT_PART_BUILD/../../cfgo/build/go/bin):$PATH"
-      which go | grep cfgo
       make cloudflared
       mkdir -p $CRAFT_PART_INSTALL/usr/bin
       cp ./cloudflared $CRAFT_PART_INSTALL/usr/bin
