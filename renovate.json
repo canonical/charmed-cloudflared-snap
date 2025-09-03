@@ -1,20 +1,21 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
-  "extends": [
-    "config:recommended",
-    "group:all"
-  ],
+  "automerge": true,
   "customManagers": [
     {
       "customType": "regex",
+      "datasourceTemplate": "github-tags",
       "fileMatch": [
         "^snap/snapcraft\\.yaml$"
       ],
       "matchStrings": [
         "version: &cloudflared-version (?<currentValue>\\d+\\.\\d+\\.\\d+)"
       ],
-      "datasourceTemplate": "github-tags",
       "packageNameTemplate": "cloudflare/cloudflared"
     }
+  ],
+  "extends": [
+    "config:recommended",
+    "group:all"
   ]
 }
