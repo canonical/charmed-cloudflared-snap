@@ -80,7 +80,7 @@ jobs:
             destination_port="0-8887,8889-65535" state=enabled
 
       - name: Setup Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: '3.13'
 
