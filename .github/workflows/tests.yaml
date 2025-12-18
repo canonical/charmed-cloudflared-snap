@@ -54,7 +54,7 @@ jobs:
         run: cat ~/.local/state/snapcraft/log/*
 
       - name: Upload snap package
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v6
         with:
           name: charmed-cloudflared.snap
           path: "*.snap"
