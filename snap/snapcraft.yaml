@@ -1,7 +1,7 @@
 name: charmed-cloudflared
 base: core24
 # don't change the following line, it's necessary for renovate!
-version: &cloudflared-version 2026.1.0
+version: &cloudflared-version 2026.1.1
 summary: Cloudflared in a snap.
 description: >-
   Cloudflared is the software powering Cloudflare Tunnel.
