@@ -2,132 +2,128 @@ diff --git a/edgediscovery/dial.go b/edgediscovery/dial.go
 index 1bbf59c3..8a766a9e 100644
 --- a/edgediscovery/dial.go
 +++ b/edgediscovery/dial.go
-@@ -1,14 +1,99 @@
+@@ -1,14 +1,91 @@
  package edgediscovery
+ 
  import (
-+"bufio"
- "context"
- "crypto/tls"
-+"encoding/base64"
-+"fmt"
-+"io"
- "net"
-+"net/http"
-+"net/url"
-+"os"
- "time"
- "github.com/pkg/errors"
-+"golang.org/x/net/proxy"
++	"bufio"
+ 	"context"
+ 	"crypto/tls"
++	"fmt"
++	"io"
+ 	"net"
++	"net/http"
++	"net/url"
++	"os"
++	"strconv"
+ 	"time"
+ 
+ 	"github.com/pkg/errors"
++	"golang.org/x/net/proxy"
  )
+ 
 +type httpsProxyDialer string
 +
 +func (d httpsProxyDialer) DialContext(ctx context.Context, network, address string) (conn net.Conn, err error) {
-+defer func() {
-+if conn != nil && err != nil {
-+_ = conn.Close()
-+conn = nil
-+}
-+}()
-+if network != "tcp" {
-+return nil, fmt.Errorf("unsupported network for proxy '%s', only tcp is supported", network)
-+}
-+httpsProxyURL, err := url.Parse(string(d))
-+if err != nil {
-+return nil, fmt.Errorf("invalid proxy URL: %s", string(d))
-+}
-+if httpsProxyURL.Scheme != "http" {
-+return nil, fmt.Errorf("unsupported protocol for proxy '%s', only http:// is supported", string(d))
-+}
-+proxyHost := httpsProxyURL.Host
-+if httpsProxyURL.Port() == "" {
-+proxyHost = net.JoinHostPort(proxyHost, "80")
-+}
-+dialer := net.Dialer{}
-+conn, err = dialer.DialContext(ctx, network, proxyHost)
-+if err != nil {
-+return nil, fmt.Errorf("failed to dial proxy: %w", err)
-+}
-+if deadline, ok := ctx.Deadline(); ok {
-+_ = conn.SetDeadline(deadline)
-+defer func() {
-+if err == nil {
-+_ = conn.SetDeadline(time.Time{})
-+}
-+}()
-+}
-+header := http.Header{
-+"User-Agent": {"cloudflared"},
-+}
-+if httpsProxyURL.User != nil {
-+username := httpsProxyURL.User.Username()
-+password, _ := httpsProxyURL.User.Password()
-+auth := username + ":" + password
-+header.Set("Proxy-Authorization", "Basic "+base64.StdEncoding.EncodeToString([]byte(auth)))
-+}
-+request := http.Request{
-+Method: "CONNECT",
-+URL: &url.URL{
-+Host: address,
-+},
-+Proto:      "HTTP/1.1",
-+ProtoMajor: 1,
-+ProtoMinor: 1,
-+Header:     header,
-+Host:       address,
-+}
-+err = request.Write(conn)
-+if err != nil {
-+return nil, fmt.Errorf("failed to send CONNECT request to proxy: %w", err)
-+}
-+response, err := http.ReadResponse(bufio.NewReader(conn), &request)
-+if err != nil {
-+return nil, fmt.Errorf("failed to receive CONNECT response from proxy: %w", err)
-+}
-+_, _ = io.Copy(io.Discard, response.Body)
-+_ = response.Body.Close()
-+if response.StatusCode != http.StatusOK {
-+return nil, fmt.Errorf("proxy returned %d response for CONNECT request", response.StatusCode)
-+}
-+return conn, nil
++	defer func() {
++		if conn != nil && err != nil {
++			_ = conn.Close()
++			conn = nil
++		}
++	}()
++	if network != "tcp" {
++		return nil, fmt.Errorf("unsupported network for proxy '%s', support tcp", network)
++	}
++	httpsProxyUrl, err := url.Parse(string(d))
++	if err != nil {
++		return nil, fmt.Errorf("invalid proxy URL: %s", string(d))
++	}
++	if httpsProxyUrl.Scheme != "http" {
++		return nil, fmt.Errorf("unsupported protocol for proxy '%s', support http://", string(d))
++	}
++	proxyHost := httpsProxyUrl.Host
++	if httpsProxyUrl.Port() == "" {
++		proxyHost = net.JoinHostPort(proxyHost, "80")
++	}
++	dialer := net.Dialer{}
++	conn, err = dialer.DialContext(ctx, network, proxyHost)
++	if err != nil {
++		return nil, fmt.Errorf("failed to dial proxy: %w", err)
++	}
++	host, portStr, err := net.SplitHostPort(address)
++	if err != nil {
++		return nil, fmt.Errorf("invalid address to proxy: %s", address)
++	}
++	port, err := net.LookupPort("tcp", portStr)
++	if err != nil {
++		return nil, fmt.Errorf("invalid address to proxy: %s", address)
++	}
++	host = net.JoinHostPort(host, strconv.Itoa(port))
++	request := http.Request{
++		Method: "CONNECT",
++		URL: &url.URL{
++			Host: host,
++		},
++		Proto:      "HTTP/1.1",
++		ProtoMajor: 1,
++		ProtoMinor: 1,
++		Header: map[string][]string{
++			"User-Agent": {"cloudflared"},
++		},
++		Host: host,
++	}
++	err = request.Write(conn)
++	if err != nil {
++		return nil, fmt.Errorf("failed to send CONNECT request to proxy: %w", err)
++	}
++	response, err := http.ReadResponse(bufio.NewReaderSize(conn, 0), &request)
++	if err != nil {
++		return nil, fmt.Errorf("failed to receive http CONNECT response from proxy: %w", err)
++	}
++	if response.StatusCode != 200 {
++		return nil, fmt.Errorf("proxy return %d response for CONNECT request", response.StatusCode)
++	}
++	_, _ = io.Copy(io.Discard, response.Body)
++	return conn, nil
 +}
 +
 +func (d httpsProxyDialer) Dial(network, address string) (net.Conn, error) {
-+return d.DialContext(context.Background(), network, address)
++	return d.DialContext(context.Background(), network, address)
 +}
 +
  // DialEdge makes a TLS connection to a Cloudflare edge node
  func DialEdge(
- ctx context.Context,
-@@ -25,7 +110,31 @@ func DialEdge(
- if localIP != nil {
- dialer.LocalAddr = &net.TCPAddr{IP: localIP, Port: 0}
- }
--edgeConn, err := dialer.DialContext(dialCtx, "tcp", edgeTCPAddr.String())
+ 	ctx context.Context,
+@@ -25,7 +102,31 @@ func DialEdge(
+ 	if localIP != nil {
+ 		dialer.LocalAddr = &net.TCPAddr{IP: localIP, Port: 0}
+ 	}
+-	edgeConn, err := dialer.DialContext(dialCtx, "tcp", edgeTCPAddr.String())
 +
-+httpsProxy := os.Getenv("https_proxy")
-+if httpsProxy == "" {
-+httpsProxy = os.Getenv("HTTPS_PROXY")
-+}
-+noProxy := os.Getenv("no_proxy")
-+if noProxy == "" {
-+noProxy = os.Getenv("NO_PROXY")
-+}
++	httpsProxy := os.Getenv("https_proxy")
++	if httpsProxy == "" {
++		httpsProxy = os.Getenv("HTTPS_PROXY")
++	}
++	noProxy := os.Getenv("no_proxy")
++	if noProxy == "" {
++		noProxy = os.Getenv("NO_PROXY")
++	}
 +
-+var proxiedDialer proxy.ContextDialer
++	var proxiedDialer proxy.ContextDialer
 +
-+if httpsProxy == "" {
-+proxiedDialer = &dialer
-+} else {
-+if noProxy == "" {
-+proxiedDialer = httpsProxyDialer(httpsProxy)
-+} else {
-+perHost := proxy.NewPerHost(httpsProxyDialer(httpsProxy), &dialer)
-+perHost.AddFromString(noProxy)
-+proxiedDialer = perHost
-+}
-+}
++	if httpsProxy == "" {
++		proxiedDialer = &dialer
++	} else {
++		if noProxy == "" {
++			proxiedDialer = httpsProxyDialer(httpsProxy)
++		} else {
++			perHost := proxy.NewPerHost(httpsProxyDialer(httpsProxy), &dialer)
++			perHost.AddFromString(noProxy)
++			proxiedDialer = perHost
++		}
++	}
 +
-+edgeConn, err := proxiedDialer.DialContext(dialCtx, "tcp", edgeTCPAddr.String())
- if err != nil {
- return nil, newDialError(err, "DialContext error")
- }
++	edgeConn, err := proxiedDialer.DialContext(dialCtx, "tcp", edgeTCPAddr.String())
+ 	if err != nil {
+ 		return nil, newDialError(err, "DialContext error")
+ 	}
