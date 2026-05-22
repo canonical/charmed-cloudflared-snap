@@ -1,8 +1,8 @@
 diff --git a/edgediscovery/dial.go b/edgediscovery/dial.go
-index 1bbf59c3..8a766a9e 100644
+index 1bbf59c3..b43b7985 100644
 --- a/edgediscovery/dial.go
 +++ b/edgediscovery/dial.go
-@@ -1,14 +1,91 @@
+@@ -1,14 +1,89 @@
  package edgediscovery
  
  import (
@@ -10,7 +10,6 @@ index 1bbf59c3..8a766a9e 100644
  	"context"
  	"crypto/tls"
 +	"fmt"
-+	"io"
  	"net"
 +	"net/http"
 +	"net/url"
@@ -83,7 +82,6 @@ index 1bbf59c3..8a766a9e 100644
 +	if response.StatusCode != 200 {
 +		return nil, fmt.Errorf("proxy return %d response for CONNECT request", response.StatusCode)
 +	}
-+	_, _ = io.Copy(io.Discard, response.Body)
 +	return conn, nil
 +}
 +
@@ -94,7 +92,7 @@ index 1bbf59c3..8a766a9e 100644
  // DialEdge makes a TLS connection to a Cloudflare edge node
  func DialEdge(
  	ctx context.Context,
-@@ -25,7 +102,31 @@ func DialEdge(
+@@ -25,7 +100,31 @@ func DialEdge(
  	if localIP != nil {
  		dialer.LocalAddr = &net.TCPAddr{IP: localIP, Port: 0}
  	}
