@@ -1,8 +1,8 @@
 diff --git a/edgediscovery/dial.go b/edgediscovery/dial.go
-index 1bbf59c3..6f1f317f 100644
+index 1bbf59c3..aebbf312 100644
 --- a/edgediscovery/dial.go
 +++ b/edgediscovery/dial.go
-@@ -1,14 +1,83 @@
+@@ -1,14 +1,110 @@
  package edgediscovery
  
  import (
@@ -10,6 +10,7 @@ index 1bbf59c3..6f1f317f 100644
  	"context"
  	"crypto/tls"
 +	"fmt"
++	"io"
  	"net"
 +	"net/http"
 +	"net/url"
@@ -23,33 +24,39 @@ index 1bbf59c3..6f1f317f 100644
  
 +type httpsProxyDialer string
 +
-+func (d httpsProxyDialer) DialContext(cxt context.Context, network, address string) (net.Conn, error) {
++func (d httpsProxyDialer) DialContext(ctx context.Context, network, address string) (conn net.Conn, err error) {
++	defer func() {
++		if conn != nil && err != nil {
++			_ = conn.Close()
++			conn = nil
++		}
++	}()
 +	if network != "tcp" {
-+		return nil, errors.Errorf("unsupported network for proxy '%s', support tcp", network)
++		return conn, fmt.Errorf("unsupported network for proxy '%s', support tcp", network)
 +	}
 +	httpsProxyUrl, err := url.Parse(string(d))
 +	if err != nil {
-+		return nil, errors.Errorf("invalid proxy URL: %s", string(d))
++		return conn, fmt.Errorf("invalid proxy URL '%s', %w", string(d), err)
 +	}
 +	if httpsProxyUrl.Scheme != "http" {
-+		return nil, errors.Errorf("unsupported protocol for proxy '%s', support http://", string(d))
++		return conn, fmt.Errorf("unsupported protocol for proxy '%s', support http://", string(d))
 +	}
 +	proxyHost := httpsProxyUrl.Host
 +	if httpsProxyUrl.Port() == "" {
 +		proxyHost = net.JoinHostPort(proxyHost, "80")
 +	}
 +	dialer := net.Dialer{}
-+	conn, err := dialer.DialContext(cxt, network, proxyHost)
++	conn, err = dialer.DialContext(ctx, network, proxyHost)
 +	if err != nil {
-+		return nil, fmt.Errorf("failed to dial proxy: %w", err)
++		return conn, fmt.Errorf("failed to dial proxy: %w", err)
 +	}
 +	host, portStr, err := net.SplitHostPort(address)
 +	if err != nil {
-+		return nil, errors.Errorf("invalid address to proxy: %s", address)
++		return conn, fmt.Errorf("invalid address to proxy: %s", address)
 +	}
 +	port, err := net.LookupPort("tcp", portStr)
 +	if err != nil {
-+		return nil, errors.Errorf("invalid address to proxy: %s", address)
++		return conn, fmt.Errorf("invalid address to proxy: %s", address)
 +	}
 +	host = net.JoinHostPort(host, strconv.Itoa(port))
 +	request := http.Request{
@@ -65,16 +72,36 @@ index 1bbf59c3..6f1f317f 100644
 +		},
 +		Host: host,
 +	}
-+	err = request.Write(conn)
-+	if err != nil {
-+		return nil, fmt.Errorf("failed to send CONNECT request to proxy: %w", err)
++	connectCtx, cancel := context.WithTimeout(ctx, 1*time.Minute)
++	defer cancel()
++	var connectErr error
++	connectDone := make(chan struct{})
++	var response *http.Response
++	go func() {
++		defer close(connectDone)
++		err = request.Write(conn)
++		if err != nil {
++			connectErr = fmt.Errorf("failed to send CONNECT request to proxy: %w", err)
++			return
++		}
++		response, err = http.ReadResponse(bufio.NewReader(&io.LimitedReader{R: conn, N: 4 * 1024 * 1024}), &request)
++		if err != nil {
++			connectErr = fmt.Errorf("failed to receive http CONNECT response from proxy: %w", err)
++			return
++		}
++	}()
++	select {
++	case <-connectCtx.Done():
++		_ = conn.Close()
++		<-connectDone
++		return conn, fmt.Errorf("failed to CONNECT to proxy: %w", connectCtx.Err())
++	case <-connectDone:
 +	}
-+	response, err := http.ReadResponse(bufio.NewReaderSize(conn, 0), &request)
-+	if err != nil {
-+		return nil, fmt.Errorf("failed to receive http CONNECT response from proxy: %w", err)
++	if connectErr != nil {
++		return conn, connectErr
 +	}
 +	if response.StatusCode != 200 {
-+		return nil, fmt.Errorf("proxy return %d response for CONNECT request", response.StatusCode)
++		return conn, fmt.Errorf("proxy return %d response for CONNECT request", response.StatusCode)
 +	}
 +	return conn, nil
 +}
@@ -86,7 +113,7 @@ index 1bbf59c3..6f1f317f 100644
  // DialEdge makes a TLS connection to a Cloudflare edge node
  func DialEdge(
  	ctx context.Context,
-@@ -25,7 +94,31 @@ func DialEdge(
+@@ -25,7 +121,31 @@ func DialEdge(
  	if localIP != nil {
  		dialer.LocalAddr = &net.TCPAddr{IP: localIP, Port: 0}
  	}
