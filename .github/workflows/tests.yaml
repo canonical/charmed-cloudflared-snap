@@ -114,3 +114,9 @@ jobs:
         if: matrix.use-proxy
         run: |
           sudo lxc exec proxy -- cat /var/log/tinyproxy/tinyproxy.log
+
+      - name: Setup tmate session
+        if: failure()
+        uses: mxschmitt/action-tmate@v3
+        timeout-minutes: 30
+
