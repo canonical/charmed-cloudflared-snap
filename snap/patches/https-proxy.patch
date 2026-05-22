@@ -1,5 +1,5 @@
 diff --git a/edgediscovery/dial.go b/edgediscovery/dial.go
-index 1bbf59c3..1a41ae88 100644
+index 1bbf59c3..aebbf312 100644
 --- a/edgediscovery/dial.go
 +++ b/edgediscovery/dial.go
 @@ -1,14 +1,110 @@
@@ -36,7 +36,7 @@ index 1bbf59c3..1a41ae88 100644
 +	}
 +	httpsProxyUrl, err := url.Parse(string(d))
 +	if err != nil {
-+		return conn, fmt.Errorf("invalid proxy URL ;%s', %w", string(d), err)
++		return conn, fmt.Errorf("invalid proxy URL '%s', %w", string(d), err)
 +	}
 +	if httpsProxyUrl.Scheme != "http" {
 +		return conn, fmt.Errorf("unsupported protocol for proxy '%s', support http://", string(d))
@@ -79,7 +79,7 @@ index 1bbf59c3..1a41ae88 100644
 +	var response *http.Response
 +	go func() {
 +		defer close(connectDone)
-+		err := request.Write(conn)
++		err = request.Write(conn)
 +		if err != nil {
 +			connectErr = fmt.Errorf("failed to send CONNECT request to proxy: %w", err)
 +			return
