@@ -1,3 +1,9 @@
+> [!WARNING]
+> **This repository has moved.**
+>
+> Development of this project now happens in the
+> [canonical/cloudflared-operators](https://github.com/canonical/cloudflared-operators).
+
 # Charmed Cloudflared Snap
 
 This repository contains the packaging metadata for creating a snap of cloudflared built from the official Ubuntu repositories. For more information on snaps, visit [snapcraft.io](https://snapcraft.io/). 
